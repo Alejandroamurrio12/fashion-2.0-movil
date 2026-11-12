@@ -46,6 +46,9 @@ void main() {
   setUp(() => backend = FakeBackend());
 
   testWidgets('operaciones: estado y resultado de cada una; sincronizar ahora', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2600);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(tester.view.reset);
     final s = await servicesFor(tester, backend);
     await signIn(backend, s.auth);
     backend.on('GET /branches/mine', (_) => json([{'id': 1, 'name': 'Centro'}]));

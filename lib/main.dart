@@ -13,6 +13,8 @@ import 'offline/local_db.dart';
 import 'offline/offline_bootstrap.dart';
 import 'offline/operation_queue.dart';
 import 'offline/sync_service.dart';
+import 'sales/sale_cart.dart';
+import 'store/cart.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,7 +35,7 @@ Future<void> main() async {
 
 /// Servicios de la app y sus dependencias (main y pruebas los arman igual).
 class AppServices {
-  AppServices._(this.api, this.auth, this.connectivity, this.branches, this.catalog, this.queue, this.bootstrap, this.sync);
+  AppServices._(this.api, this.auth, this.connectivity, this.branches, this.catalog, this.queue, this.bootstrap, this.sync, this.cart, this.saleCart);
 
   final ApiClient api;
   final AuthService auth;
@@ -43,6 +45,8 @@ class AppServices {
   final OperationQueue queue;
   final OfflineBootstrap bootstrap;
   final SyncService sync;
+  final CartService cart;
+  final SaleCart saleCart;
 
   factory AppServices.wire({
     required ApiClient api,
@@ -57,6 +61,8 @@ class AppServices {
     final queue = OperationQueue(local);
     final bootstrap = OfflineBootstrap(auth, connectivity, catalog, queue);
     final sync = SyncService(api, auth, connectivity, queue, interval: syncInterval);
+    final cart = CartService(api);
+    final saleCart = SaleCart();
     // la cola se empieza a enviar cuando el usuario puede operar sin conexion
     bootstrap.onReady = () {
       if (bootstrap.canOperateOffline) sync.start();
@@ -69,8 +75,10 @@ class AppServices {
       await catalog.clear();
       await queue.refresh();
       branches.reset();
+      cart.reset();
+      saleCart.clear();
     });
-    return AppServices._(api, auth, connectivity, branches, catalog, queue, bootstrap, sync);
+    return AppServices._(api, auth, connectivity, branches, catalog, queue, bootstrap, sync, cart, saleCart);
   }
 
   Widget provide(Widget child) => MultiProvider(
@@ -83,6 +91,8 @@ class AppServices {
           ChangeNotifierProvider.value(value: queue),
           ChangeNotifierProvider.value(value: bootstrap),
           ChangeNotifierProvider.value(value: sync),
+          ChangeNotifierProvider.value(value: cart),
+          ChangeNotifierProvider.value(value: saleCart),
         ],
         child: child,
       );

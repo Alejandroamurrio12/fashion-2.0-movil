@@ -2,7 +2,7 @@ import 'package:fashionstore_movil/app.dart';
 import 'package:fashionstore_movil/main.dart';
 import 'package:fashionstore_movil/offline/operation_queue.dart';
 import 'package:fashionstore_movil/sales/pickers.dart';
-import 'package:fashionstore_movil/sales/pos_screen.dart';
+import 'package:fashionstore_movil/sales/sale_cart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -149,7 +149,7 @@ void main() {
   testWidgets('sin conexion: solo efectivo, cola local con precio cobrado y comprobante provisional (RN-06)', (tester) async {
     final s = await openPos(tester, backend, online: false);
     expect(find.byKey(const Key('offline-banner')), findsOneWidget);
-    expect(find.text('Guardar venta sin conexión'), findsOneWidget);
+    expect(find.text('Pagar al contado (sin conexión)'), findsOneWidget);
     await addItem(tester, 'L / Negro');
     await tester.tap(find.byKey(const Key('plus-12')));
     await tester.pump();

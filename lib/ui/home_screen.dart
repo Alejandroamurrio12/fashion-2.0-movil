@@ -65,13 +65,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(me.tenant?.legalName ?? 'FashionStore'),
+        title: Text(me.tenant?.legalName ?? 'FashionStore', overflow: TextOverflow.ellipsis),
         actions: [
           if (queue.pending > 0 || queue.conflicts > 0)
-            TextButton(
+            IconButton(
               key: const Key('pending-badge'),
+              tooltip: queue.conflicts > 0
+                  ? '${queue.pending} sin sincronizar · ${queue.conflicts} en conflicto'
+                  : '${queue.pending} sin sincronizar',
               onPressed: () => Navigator.of(context).pushNamed('/operations'),
-              child: Text(queue.conflicts > 0 ? '${queue.pending} pend. · ${queue.conflicts} confl.' : '${queue.pending} sin sincronizar'),
+              icon: Badge(
+                backgroundColor: queue.conflicts > 0 ? scheme.error : scheme.tertiary,
+                label: Text('${queue.pending + queue.conflicts}'),
+                child: const Icon(Icons.sync_problem),
+              ),
             ),
           Padding(
             padding: const EdgeInsets.only(right: 8),

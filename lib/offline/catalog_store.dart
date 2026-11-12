@@ -53,6 +53,34 @@ class LocalVariant {
   String get label => '$productName $size / $color';
 }
 
+/// Producto del catalogo local con sus variantes (para el catalogo visual del punto de venta).
+class LocalProduct {
+  LocalProduct({
+    required this.id,
+    required this.code,
+    required this.name,
+    required this.category,
+    required this.brand,
+    required this.imageUrl,
+    required this.variants,
+    required this.hexByColor,
+  });
+
+  final int id;
+  final String code;
+  final String name;
+  final String category;
+  final String? brand;
+  final String? imageUrl;
+  final List<LocalVariant> variants;
+  final Map<String, String?> hexByColor;
+
+  double get minPrice => variants.map((v) => v.price).reduce((a, b) => a < b ? a : b);
+  double get maxPrice => variants.map((v) => v.price).reduce((a, b) => a > b ? a : b);
+  List<String> get colors => [...{for (final v in variants) v.color}];
+  List<String> get sizes => [...{for (final v in variants) v.size}];
+}
+
 class LocalCustomer {
   LocalCustomer({required this.id, required this.fullName, this.documentNumber});
   final int id;
@@ -162,6 +190,35 @@ class CatalogStore extends ChangeNotifier {
     }
     return out;
   }
+
+  /// Todos los productos del catalogo descargado, ordenados por nombre.
+  Future<List<LocalProduct>> products() async {
+    final out = <LocalProduct>[];
+    for (final r in await _db.query('products', orderBy: 'name')) {
+      final prod = jsonDecode(r['data'] as String) as Map<String, dynamic>;
+      final variants = _variants(prod).toList();
+      if (variants.isEmpty) continue;
+      out.add(LocalProduct(
+        id: prod['id'] as int,
+        code: prod['code'] as String,
+        name: prod['name'] as String,
+        category: prod['category'] as String,
+        brand: prod['brand'] as String?,
+        imageUrl: prod['cover_image_url'] as String?,
+        variants: variants,
+        hexByColor: {
+          for (final v in (prod['variants'] as List).cast<Map<String, dynamic>>()) v['color'] as String: v['hex_code'] as String?,
+        },
+      ));
+    }
+    return out;
+  }
+
+  /// Disponible local por variante en una sucursal (ya descuenta lo vendido sin conexion).
+  Future<Map<int, int>> stockOf(int branchId) async => {
+        for (final r in await _db.query('stock', where: 'branch_id = ?', whereArgs: [branchId]))
+          r['product_variant_id'] as int: r['available'] as int,
+      };
 
   Future<LocalVariant?> variant(int id) async => (await _variantIndex())[id];
 

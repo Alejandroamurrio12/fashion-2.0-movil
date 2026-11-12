@@ -6,15 +6,21 @@ App para el personal y los clientes de cada empresa: venta en tienda con y sin c
 
 ```powershell
 flutter pub get
-# emulador de Android con el backend local (10.0.2.2 = la PC vista desde el emulador)
+# backend publicado en Render (por defecto): https://fashionstore-api-xcrn.onrender.com
 flutter run
-# otro backend
-flutter run --dart-define=API_URL=https://fashionstore-api.onrender.com/api/v1
+# backend local desde el emulador (10.0.2.2 = la PC vista desde el emulador)
+flutter run --dart-define=API_URL=http://10.0.2.2:8000/api/v1
+# APK para instalar en el telefono (usa Render)
+flutter build apk --release
 ```
 
 Para compilar el APK hay que aceptar antes las licencias de Android: `flutter doctor --android-licenses`.
 
 En producción solo se permite HTTPS; HTTP queda habilitado únicamente para `10.0.2.2` y `localhost` (`android/app/src/main/res/xml/network_security_config.xml`).
+
+## Tienda del cliente
+
+El rol Cliente entra directo a la tienda (`lib/store/`): catálogo en cuadrícula con precio, etiquetas Nuevo/Agotado, búsqueda, categorías, orden y filtro de stock; detalle con color, talla y disponibilidad por sucursal; carrito que se confirma como reserva en la sucursal elegida (`POST /reservations`).
 
 ## Pruebas
 

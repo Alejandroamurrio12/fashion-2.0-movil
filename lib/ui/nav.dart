@@ -23,6 +23,7 @@ class NavEntry {
 }
 
 const List<NavEntry> navEntries = [
+  NavEntry(label: 'Catálogo', icon: Icons.grid_view, route: '/catalog', permissions: ['sales.create'], feature: 'sales'),
   NavEntry(label: 'Punto de venta', icon: Icons.point_of_sale, route: '/pos', permissions: ['sales.create'], feature: 'sales'),
   NavEntry(label: 'Operaciones sin conexión', icon: Icons.sync, route: '/operations', permissions: ['sync.run'], feature: 'offline'),
   NavEntry(label: 'Conflictos de sincronización', icon: Icons.rule, route: '/conflicts', permissions: ['sync.resolve_conflicts']),

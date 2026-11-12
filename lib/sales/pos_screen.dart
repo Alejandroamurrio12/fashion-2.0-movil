@@ -12,18 +12,7 @@ import '../offline/operation_queue.dart';
 import '../ui/format.dart';
 import 'pickers.dart';
 import 'receipt_screen.dart';
-
-class CartLine {
-  CartLine(this.item, [this.quantity = 1]);
-  final PickedItem item;
-  int quantity;
-
-  String? get problem {
-    if (quantity < 1 || quantity > 1000) return 'Cantidad entre 1 y 1000.';
-    if (item.available != null && quantity > item.available!) return 'Solo hay ${item.available} disponibles.';
-    return null;
-  }
-}
+import 'sale_cart.dart';
 
 const paymentLabels = {'CASH': 'Efectivo', 'CARD': 'Tarjeta', 'QR': 'QR', 'TRANSFER': 'Transferencia'};
 final _moneyInput = RegExp(r'^\d+(\.\d{1,2})?$');
@@ -39,7 +28,6 @@ class PosScreen extends StatefulWidget {
 }
 
 class _PosScreenState extends State<PosScreen> {
-  final List<CartLine> _cart = [];
   PickedCustomer? _customer;
   String _method = 'CASH';
   final _received = TextEditingController();
@@ -58,7 +46,9 @@ class _PosScreenState extends State<PosScreen> {
     super.dispose();
   }
 
-  double get _total => round2(_cart.fold<double>(0, (s, l) => s + l.item.price * l.quantity));
+  SaleCart get _sale => context.read<SaleCart>();
+  List<CartLine> get _cart => _sale.lines;
+  double get _total => _sale.total;
 
   String? _offlineBlock(bool offline) {
     if (!offline) return null;
@@ -69,15 +59,8 @@ class _PosScreenState extends State<PosScreen> {
   }
 
   void _add(PickedItem item) {
-    setState(() {
-      _error = null;
-      final existing = _cart.where((l) => l.item.variantId == item.variantId).firstOrNull;
-      if (existing != null) {
-        existing.quantity++;
-      } else {
-        _cart.add(CartLine(item));
-      }
-    });
+    setState(() => _error = null);
+    _sale.add(item);
   }
 
   double? _change() {
@@ -109,8 +92,9 @@ class _PosScreenState extends State<PosScreen> {
     try {
       final result = offline ? await _saveOffline(branch, received) : await _saveOnline(branch.id, method, received);
       if (!mounted) return;
+      // la venta ya quedo registrada (o en la cola): el carrito se vacia para no cobrarla dos veces
+      _reset();
       await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReceiptScreen(result: result)));
-      if (mounted) _reset();
     } on ApiError catch (e) {
       setState(() {
         _error = e.message;
@@ -191,7 +175,7 @@ class _PosScreenState extends State<PosScreen> {
   }
 
   void _reset() => setState(() {
-        _cart.clear();
+        _sale.clear();
         _customer = null;
         _method = 'CASH';
         for (final c in [_received, _reference, _taxId, _taxName]) {
@@ -213,9 +197,17 @@ class _PosScreenState extends State<PosScreen> {
     final scheme = Theme.of(context).colorScheme;
     final change = _change();
     final method = offline ? 'CASH' : _method;
+    context.watch<SaleCart>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Punto de venta')),
+      appBar: AppBar(title: const Text('Carrito y cobro'), actions: [
+        TextButton.icon(
+          key: const Key('open-catalog'),
+          onPressed: () => Navigator.of(context).pushNamed('/catalog'),
+          icon: const Icon(Icons.grid_view),
+          label: const Text('Catálogo'),
+        ),
+      ]),
       body: branch == null
           // sin conexion y sin catalogo no hay sucursales: se explica el motivo real
           ? Center(
@@ -254,9 +246,9 @@ class _PosScreenState extends State<PosScreen> {
                       trailing: SizedBox(
                         width: 150,
                         child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                          IconButton(icon: const Icon(Icons.remove), onPressed: () => setState(() => l.quantity > 1 ? l.quantity-- : _cart.remove(l))),
+                          IconButton(key: Key('minus-${l.item.variantId}'), icon: const Icon(Icons.remove), onPressed: () => _sale.decrement(l)),
                           Text('${l.quantity}', key: Key('qty-${l.item.variantId}')),
-                          IconButton(key: Key('plus-${l.item.variantId}'), icon: const Icon(Icons.add), onPressed: () => setState(() => l.quantity++)),
+                          IconButton(key: Key('plus-${l.item.variantId}'), icon: const Icon(Icons.add), onPressed: () => _sale.increment(l)),
                         ]),
                       ),
                     ),
@@ -312,7 +304,7 @@ class _PosScreenState extends State<PosScreen> {
                   onPressed: _saving || block != null || (!offline && auth.readOnly) || _cart.isEmpty ? null : _submit,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(_saving ? 'Registrando…' : (offline ? 'Guardar venta sin conexión' : 'Confirmar venta')),
+                    child: Text(_saving ? 'Registrando…' : (offline ? 'Pagar al contado (sin conexión)' : 'Pagar y confirmar venta')),
                   ),
                 ),
               ],
